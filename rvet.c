@@ -52,6 +52,8 @@ void Send(int dest, Clock *clock) {
     int pid;
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     // TODO: incrementar clock local e enviar clock->p via MPI_Send
+    clock->p[pid]++;
+    MPI_Send(clock->p, 3, MPI_INT, dest, 0, MPI_COMM_WORLD);
     
     // No final, imprime relógio atualizado:
     PrintClock("Envio de mensagem", clock);
@@ -67,8 +69,20 @@ void Send(int dest, Clock *clock) {
  */
 void Receive(int src, Clock *clock) {
     int pid;
+    int received[3];
+    
     MPI_Comm_rank(MPI_COMM_WORLD, &pid);
     // TODO: receber vetor e atualizar clock local
+    // Utiliza vetor auxiliar para realizar comparação antes de incrementar
+    MPI_Recv(received, 3, MPI_INT, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+    
+    //Compara o valor armazenado no vetor do processo com o valor recebido na msg
+    for (int i = 0; i < 3; i++) {
+        if (clock->p[i] < received[i]) {
+            clock->p[i] = received[i];
+        }
+    }
+    clock->p[pid]++;
     
     // No final, imprime relógio atualizado
     PrintClock("Recebimento de mensagem", clock);
@@ -85,18 +99,30 @@ void process0() {
 
     Event(&clock);
     // TODO: Send/Receive conforme diagrama
+    Send(1, &clock);
+    Receive(1,&clock);
+    Send(2, &clock);
+    Receive(2, &clock);
+    Send(1, &clock);
+    Event(&clock);
 }
 
 void process1() {
     Clock clock = {{0,0,0}};
     PrintClock("Estado inicial", &clock);
     // TODO
+    Send(0, &clock);
+    Receive(0, &clock);
+    Receive(0, &clock);
 }
 
 void process2() {
     Clock clock = {{0,0,0}};
     PrintClock("Estado inicial", &clock);
     // TODO
+    Event(&clock);
+    Send(0, &clock);
+    Receive(0, &clock);
 }
 
 int main(void) {
